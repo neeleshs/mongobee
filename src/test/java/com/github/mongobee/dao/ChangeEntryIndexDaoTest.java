@@ -8,22 +8,30 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import org.bson.Document;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import com.github.fakemongo.Fongo;
 import com.github.mongobee.changeset.ChangeEntry;
 import com.mongodb.MongoClient;
+import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import org.testcontainers.containers.MongoDBContainer;
 
 /**
  * @author lstolowski
  * @since 10.12.14
  */
 public class ChangeEntryIndexDaoTest {
+
+  @ClassRule
+  public static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.16");
+
   private static final String TEST_SERVER = "testServer";
   private static final String DB_NAME = "mongobeetest";
   private static final String CHANGEID_AUTHOR_INDEX_NAME = "changeId_1_author_1";
@@ -31,11 +39,30 @@ public class ChangeEntryIndexDaoTest {
 
   private ChangeEntryIndexDao dao = new ChangeEntryIndexDao(CHANGELOG_COLLECTION_NAME);
 
+  private static MongoClient testMongoClient;
+
+  @BeforeClass
+  public static void setUp() {
+    String connectionString = mongoDBContainer.getReplicaSetUrl(DB_NAME);
+    testMongoClient = new MongoClient(new MongoClientURI(connectionString));
+  }
+
+  @AfterClass
+  public static void tearDown() {
+    if (testMongoClient != null) {
+      testMongoClient.close();
+    }
+  }
+
+  private static MongoDatabase createTestDatabase() {
+    return testMongoClient.getDatabase(DB_NAME);
+  }
+
   @Test
   public void shouldCreateRequiredUniqueIndex() {
     // given
     MongoClient mongo = mock(MongoClient.class);
-    MongoDatabase db = new Fongo(TEST_SERVER).getDatabase(DB_NAME);
+    MongoDatabase db = createTestDatabase();
     when(mongo.getDatabase(Mockito.anyString())).thenReturn(db);
 
     // when
@@ -52,7 +79,7 @@ public class ChangeEntryIndexDaoTest {
   public void shouldDropWrongIndex() {
     // init
     MongoClient mongo = mock(MongoClient.class);
-    MongoDatabase db = new Fongo(TEST_SERVER).getDatabase(DB_NAME);
+    MongoDatabase db = createTestDatabase();
     when(mongo.getDatabase(Mockito.anyString())).thenReturn(db);
 
     MongoCollection<Document> collection = db.getCollection(CHANGELOG_COLLECTION_NAME);

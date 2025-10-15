@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory;
 
 import com.github.mongobee.changeset.ChangeEntry;
 import com.github.mongobee.dao.ChangeEntryDao;
@@ -59,14 +60,14 @@ public class Mongobee implements InitializingBean {
   /**
    * <p>Simple constructor with default configuration of host (localhost) and port (27017). Although
    * <b>the database name need to be provided</b> using {@link Mongobee#setDbName(String)} setter.</p>
-   * <p>It is recommended to use constructors with MongoURI</p>
+   * <p>It is recommended to use constructors with MongoClientURI</p>
    */
   public Mongobee() {
     this(new MongoClientURI("mongodb://" + defaultHost() + ":" + defaultPort() + "/"));
   }
 
   /**
-   * <p>Constructor takes db.mongodb.MongoClientURI object as a parameter.
+   * <p>Constructor takes MongoClientURI object as a parameter.
    * </p><p>For more details about MongoClientURI please see com.mongodb.MongoClientURI docs
    * </p>
    *
@@ -82,7 +83,7 @@ public class Mongobee implements InitializingBean {
 
   /**
    * <p>Constructor takes db.mongodb.MongoClient object as a parameter.
-   * </p><p>For more details about <tt>MongoClient</tt> please see com.mongodb.MongoClient docs
+   * </p><p>For more details about {@code MongoClient} please see com.mongodb.MongoClient docs
    * </p>
    *
    * @param mongoClient database connection client
@@ -228,16 +229,24 @@ public class Mongobee implements InitializingBean {
         && changeSetMethod.getParameterTypes()[0].equals(MongoTemplate.class)) {
       logger.debug("method with MongoTemplate argument");
 
-      return changeSetMethod.invoke(changeLogInstance, mongoTemplate != null ? mongoTemplate : new MongoTemplate(db.getMongo(), dbName));
+      MongoTemplate template = mongoTemplate;
+      if (template == null && mongoClientURI != null) {
+        template = new MongoTemplate(new SimpleMongoClientDatabaseFactory(mongoClientURI.getURI()));
+      }
+      return changeSetMethod.invoke(changeLogInstance, template);
     } else if (changeSetMethod.getParameterTypes().length == 2
         && changeSetMethod.getParameterTypes()[0].equals(MongoTemplate.class)
         && changeSetMethod.getParameterTypes()[1].equals(Environment.class)) {
       logger.debug("method with MongoTemplate and environment arguments");
 
-      return changeSetMethod.invoke(changeLogInstance, mongoTemplate != null ? mongoTemplate : new MongoTemplate(db.getMongo(), dbName), springEnvironment);
+      MongoTemplate template = mongoTemplate;
+      if (template == null && mongoClientURI != null) {
+        template = new MongoTemplate(new SimpleMongoClientDatabaseFactory(mongoClientURI.getURI()));
+      }
+      return changeSetMethod.invoke(changeLogInstance, template, springEnvironment);
     } else if (changeSetMethod.getParameterTypes().length == 1
         && changeSetMethod.getParameterTypes()[0].equals(MongoDatabase.class)) {
-      logger.debug("method with DB argument");
+      logger.debug("method with MongoDatabase argument");
 
       return changeSetMethod.invoke(changeLogInstance, mongoDatabase);
     } else if (changeSetMethod.getParameterTypes().length == 0) {

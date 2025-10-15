@@ -2,28 +2,36 @@ package com.github.mongobee.dao;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.bson.Document;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
 
-import com.github.fakemongo.Fongo;
 import com.github.mongobee.exception.MongobeeConfigurationException;
 import com.github.mongobee.exception.MongobeeLockException;
-import com.mongodb.FongoMongoCollection;
+
 import com.mongodb.MongoClient;
+import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoDatabase;
+import org.testcontainers.containers.MongoDBContainer;
 
 /**
  * @author lstolowski
  * @since 10.12.14
  */
 public class ChangeEntryDaoTest {
+
+  @ClassRule
+  public static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.16");
+
   private static final String TEST_SERVER = "testServer";
   private static final String DB_NAME = "mongobeetest";
   private static final String CHANGELOG_COLLECTION_NAME = "dbchangelog";
@@ -33,6 +41,25 @@ public class ChangeEntryDaoTest {
   private static final long CHANGE_LOG_LOCK_POLL_RATE = 10L;
   private static final boolean THROW_EXCEPTION_IF_CANNOT_OBTAIN_LOCK = false;
 
+  private static MongoClient testMongoClient;
+
+  @BeforeClass
+  public static void setUp() {
+    String connectionString = mongoDBContainer.getReplicaSetUrl(DB_NAME);
+    testMongoClient = new MongoClient(new MongoClientURI(connectionString));
+  }
+
+  @AfterClass
+  public static void tearDown() {
+    if (testMongoClient != null) {
+      testMongoClient.close();
+    }
+  }
+
+  private static MongoDatabase createTestDatabase() {
+    return testMongoClient.getDatabase(DB_NAME);
+  }
+
   @Test
   public void shouldCreateChangeIdAuthorIndexIfNotFound() throws MongobeeConfigurationException {
 
@@ -41,7 +68,7 @@ public class ChangeEntryDaoTest {
         CHANGE_LOG_LOCK_WAIT_TIME, CHANGE_LOG_LOCK_POLL_RATE, THROW_EXCEPTION_IF_CANNOT_OBTAIN_LOCK);
 
     MongoClient mongoClient = mock(MongoClient.class);
-    MongoDatabase db = new Fongo(TEST_SERVER).getDatabase(DB_NAME);
+    MongoDatabase db = createTestDatabase();
 
     when(mongoClient.getDatabase(anyString())).thenReturn(db);
 
@@ -53,9 +80,9 @@ public class ChangeEntryDaoTest {
     dao.connectMongoDb(mongoClient, DB_NAME);
 
     //then
-    verify(indexDaoMock, times(1)).createRequiredUniqueIndex(any(FongoMongoCollection.class));
+    verify(indexDaoMock, times(1)).createRequiredUniqueIndex(any(com.mongodb.client.MongoCollection.class));
     // and not
-    verify(indexDaoMock, times(0)).dropIndex(any(FongoMongoCollection.class), any(Document.class));
+    verify(indexDaoMock, times(0)).dropIndex(any(com.mongodb.client.MongoCollection.class), any(Document.class));
   }
 
   @Test
@@ -63,7 +90,7 @@ public class ChangeEntryDaoTest {
 
     // given
     MongoClient mongoClient = mock(MongoClient.class);
-    MongoDatabase db = new Fongo(TEST_SERVER).getDatabase(DB_NAME);
+    MongoDatabase db = createTestDatabase();
     when(mongoClient.getDatabase(anyString())).thenReturn(db);
 
     ChangeEntryDao dao = new ChangeEntryDao(CHANGELOG_COLLECTION_NAME, LOCK_COLLECTION_NAME, WAIT_FOR_LOCK,
@@ -87,7 +114,7 @@ public class ChangeEntryDaoTest {
 
     // given
     MongoClient mongoClient = mock(MongoClient.class);
-    MongoDatabase db = new Fongo(TEST_SERVER).getDatabase(DB_NAME);
+    MongoDatabase db = createTestDatabase();
     when(mongoClient.getDatabase(anyString())).thenReturn(db);
 
     ChangeEntryDao dao = new ChangeEntryDao(CHANGELOG_COLLECTION_NAME, LOCK_COLLECTION_NAME, WAIT_FOR_LOCK,
@@ -101,9 +128,9 @@ public class ChangeEntryDaoTest {
     dao.connectMongoDb(mongoClient, DB_NAME);
 
     //then
-    verify(indexDaoMock, times(1)).dropIndex(any(FongoMongoCollection.class), any(Document.class));
+    verify(indexDaoMock, times(1)).dropIndex(any(com.mongodb.client.MongoCollection.class), any(Document.class));
     // and
-    verify(indexDaoMock, times(1)).createRequiredUniqueIndex(any(FongoMongoCollection.class));
+    verify(indexDaoMock, times(1)).createRequiredUniqueIndex(any(com.mongodb.client.MongoCollection.class));
   }
 
   @Test
@@ -111,7 +138,7 @@ public class ChangeEntryDaoTest {
 
     // given
     MongoClient mongoClient = mock(MongoClient.class);
-    MongoDatabase db = new Fongo(TEST_SERVER).getDatabase(DB_NAME);
+    MongoDatabase db = createTestDatabase();
     when(mongoClient.getDatabase(anyString())).thenReturn(db);
 
     ChangeEntryDao dao = new ChangeEntryDao(CHANGELOG_COLLECTION_NAME, LOCK_COLLECTION_NAME, WAIT_FOR_LOCK,
@@ -135,7 +162,7 @@ public class ChangeEntryDaoTest {
 
     // given
     MongoClient mongoClient = mock(MongoClient.class);
-    MongoDatabase db = new Fongo(TEST_SERVER).getDatabase(DB_NAME);
+    MongoDatabase db = createTestDatabase();
     when(mongoClient.getDatabase(anyString())).thenReturn(db);
 
     ChangeEntryDao dao = new ChangeEntryDao(CHANGELOG_COLLECTION_NAME, LOCK_COLLECTION_NAME, WAIT_FOR_LOCK,
@@ -158,7 +185,7 @@ public class ChangeEntryDaoTest {
   public void shouldWaitForLockIfWaitForLockIsTrue() throws Exception {
     // given
     MongoClient mongoClient = mock(MongoClient.class);
-    MongoDatabase db = new Fongo(TEST_SERVER).getDatabase(DB_NAME);
+    MongoDatabase db = createTestDatabase();
     when(mongoClient.getDatabase(anyString())).thenReturn(db);
 
     ChangeEntryDao dao = new ChangeEntryDao(CHANGELOG_COLLECTION_NAME, LOCK_COLLECTION_NAME, true,
@@ -182,7 +209,7 @@ public class ChangeEntryDaoTest {
   public void shouldThrowLockExceptionIfThrowExceptionIsTrue() throws Exception {
     // given
     MongoClient mongoClient = mock(MongoClient.class);
-    MongoDatabase db = new Fongo(TEST_SERVER).getDatabase(DB_NAME);
+    MongoDatabase db = createTestDatabase();
     when(mongoClient.getDatabase(anyString())).thenReturn(db);
 
     ChangeEntryDao dao = new ChangeEntryDao(CHANGELOG_COLLECTION_NAME, LOCK_COLLECTION_NAME, WAIT_FOR_LOCK,
@@ -206,7 +233,7 @@ public class ChangeEntryDaoTest {
 
     // given
     MongoClient mongoClient = mock(MongoClient.class);
-    MongoDatabase db = new Fongo(TEST_SERVER).getDatabase(DB_NAME);
+    MongoDatabase db = createTestDatabase();
     when(mongoClient.getDatabase(anyString())).thenReturn(db);
 
     ChangeEntryDao dao = new ChangeEntryDao(CHANGELOG_COLLECTION_NAME, LOCK_COLLECTION_NAME, WAIT_FOR_LOCK,
@@ -229,7 +256,7 @@ public class ChangeEntryDaoTest {
 
     // given
     MongoClient mongoClient = mock(MongoClient.class);
-    MongoDatabase db = new Fongo(TEST_SERVER).getDatabase(DB_NAME);
+    MongoDatabase db = createTestDatabase();
     when(mongoClient.getDatabase(anyString())).thenReturn(db);
 
     ChangeEntryDao dao = new ChangeEntryDao(CHANGELOG_COLLECTION_NAME, LOCK_COLLECTION_NAME, WAIT_FOR_LOCK,

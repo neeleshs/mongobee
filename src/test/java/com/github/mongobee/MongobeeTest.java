@@ -1,6 +1,5 @@
 package com.github.mongobee;
 
-import com.github.fakemongo.Fongo;
 import com.github.mongobee.changeset.ChangeEntry;
 import com.github.mongobee.dao.ChangeEntryDao;
 import com.github.mongobee.dao.ChangeEntryIndexDao;
@@ -14,24 +13,29 @@ import org.bson.Document;
 import org.jongo.Jongo;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.testcontainers.containers.MongoDBContainer;
 
 import java.net.UnknownHostException;
 import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MongobeeTest {
+
+  @ClassRule
+  public static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.16");
 
   private static final String CHANGELOG_COLLECTION_NAME = "dbchangelog";
   @InjectMocks
@@ -45,11 +49,15 @@ public class MongobeeTest {
 
   private DB fakeDb;
   private MongoDatabase fakeMongoDatabase;
+  private com.mongodb.MongoClient mongoClient;
 
   @Before
   public void init() throws MongobeeException, UnknownHostException {
-    fakeDb = new Fongo("testServer").getDB("mongobeetest");
-    fakeMongoDatabase = new Fongo("testServer").getDatabase("mongobeetest");
+    String connectionString = mongoDBContainer.getReplicaSetUrl("mongobeetest");
+    MongoClientURI mongoClientURI = new MongoClientURI(connectionString);
+    mongoClient = new com.mongodb.MongoClient(mongoClientURI);
+    fakeDb = mongoClient.getDB("mongobeetest");
+    fakeMongoDatabase = mongoClient.getDatabase("mongobeetest");
     when(dao.connectMongoDb(any(MongoClientURI.class), anyString()))
         .thenReturn(fakeMongoDatabase);
     when(dao.getDb()).thenReturn(fakeDb);
@@ -60,6 +68,7 @@ public class MongobeeTest {
     dao.setIndexDao(indexDao);
     dao.setChangelogCollectionName(CHANGELOG_COLLECTION_NAME);
 
+    runner.setMongoClientURI(mongoClientURI);
     runner.setDbName("mongobeetest");
     runner.setEnabled(true);
     runner.setChangeLogsScanPackage(MongobeeTestResource.class.getPackage().getName());
@@ -86,28 +95,28 @@ public class MongobeeTest {
     verify(dao, times(13)).save(any(ChangeEntry.class)); // 13 changesets saved to dbchangelog
 
     // dbchangelog collection checking
-    long change1 = fakeMongoDatabase.getCollection(CHANGELOG_COLLECTION_NAME).count(new Document()
+    long change1 = fakeMongoDatabase.getCollection(CHANGELOG_COLLECTION_NAME).countDocuments(new Document()
         .append(ChangeEntry.KEY_CHANGEID, "test1")
         .append(ChangeEntry.KEY_AUTHOR, "testuser"));
     assertEquals(1, change1);
-    long change2 = fakeMongoDatabase.getCollection(CHANGELOG_COLLECTION_NAME).count(new Document()
+    long change2 = fakeMongoDatabase.getCollection(CHANGELOG_COLLECTION_NAME).countDocuments(new Document()
         .append(ChangeEntry.KEY_CHANGEID, "test2")
         .append(ChangeEntry.KEY_AUTHOR, "testuser"));
     assertEquals(1, change2);
-    long change3 = fakeMongoDatabase.getCollection(CHANGELOG_COLLECTION_NAME).count(new Document()
+    long change3 = fakeMongoDatabase.getCollection(CHANGELOG_COLLECTION_NAME).countDocuments(new Document()
         .append(ChangeEntry.KEY_CHANGEID, "test3")
         .append(ChangeEntry.KEY_AUTHOR, "testuser"));
     assertEquals(1, change3);
-    long change4 = fakeMongoDatabase.getCollection(CHANGELOG_COLLECTION_NAME).count(new Document()
+    long change4 = fakeMongoDatabase.getCollection(CHANGELOG_COLLECTION_NAME).countDocuments(new Document()
         .append(ChangeEntry.KEY_CHANGEID, "test4")
         .append(ChangeEntry.KEY_AUTHOR, "testuser"));
     assertEquals(1, change4);
-    long change5 = fakeMongoDatabase.getCollection(CHANGELOG_COLLECTION_NAME).count(new Document()
+    long change5 = fakeMongoDatabase.getCollection(CHANGELOG_COLLECTION_NAME).countDocuments(new Document()
         .append(ChangeEntry.KEY_CHANGEID, "test5")
         .append(ChangeEntry.KEY_AUTHOR, "testuser"));
     assertEquals(1, change5);
 
-    long changeAll = fakeMongoDatabase.getCollection(CHANGELOG_COLLECTION_NAME).count(new Document()
+    long changeAll = fakeMongoDatabase.getCollection(CHANGELOG_COLLECTION_NAME).countDocuments(new Document()
         .append(ChangeEntry.KEY_AUTHOR, "testuser"));
     assertEquals(12, changeAll);
   }
@@ -115,6 +124,7 @@ public class MongobeeTest {
   @Test
   public void shouldPassOverChangeSets() throws Exception {
     // given
+    when(dao.acquireProcessLock()).thenReturn(true);
     when(dao.isNewChange(any(ChangeEntry.class))).thenReturn(false);
 
     // when
@@ -219,6 +229,9 @@ public class MongobeeTest {
     runner.setMongoTemplate(null);
     runner.setJongo(null);
     fakeDb.dropDatabase();
+    if (mongoClient != null) {
+      mongoClient.close();
+    }
   }
 
 }

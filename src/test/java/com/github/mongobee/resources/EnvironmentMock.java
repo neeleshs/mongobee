@@ -1,6 +1,7 @@
 package com.github.mongobee.resources;
 
 import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 
 /**
  * Mock for Spring environment
@@ -26,7 +27,13 @@ public class EnvironmentMock implements Environment {
   }
 
   @Override
+  @Deprecated
   public boolean acceptsProfiles(String... strings) {
+    return false;
+  }
+
+  @Override
+  public boolean acceptsProfiles(Profiles profiles) {
     return false;
   }
 
@@ -55,7 +62,6 @@ public class EnvironmentMock implements Environment {
     return null;
   }
 
-  @Override
   public <T> Class<T> getPropertyAsClass(String s, Class<T> tClass) {
     return null;
   }

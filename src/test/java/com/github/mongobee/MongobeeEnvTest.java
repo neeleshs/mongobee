@@ -1,6 +1,5 @@
 package com.github.mongobee;
 
-import com.github.fakemongo.Fongo;
 import com.github.mongobee.changeset.ChangeEntry;
 import com.github.mongobee.dao.ChangeEntryDao;
 import com.github.mongobee.dao.ChangeEntryIndexDao;
@@ -12,15 +11,17 @@ import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.testcontainers.containers.MongoDBContainer;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.when;
 
@@ -29,6 +30,10 @@ import static org.mockito.Mockito.when;
  */
 @RunWith(MockitoJUnitRunner.class)
 public class MongobeeEnvTest {
+
+  @ClassRule
+  public static MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.16");
+
   private static final String CHANGELOG_COLLECTION_NAME = "dbchangelog";
 
   @InjectMocks
@@ -43,11 +48,15 @@ public class MongobeeEnvTest {
   private DB fakeDb;
 
   private MongoDatabase fakeMongoDatabase;
+  private com.mongodb.MongoClient mongoClient;
 
   @Before
   public void init() throws Exception {
-    fakeDb = new Fongo("testServer").getDB("mongobeetest");
-    fakeMongoDatabase = new Fongo("testServer").getDatabase("mongobeetest");
+    String connectionString = mongoDBContainer.getReplicaSetUrl("mongobeetest");
+    MongoClientURI mongoClientURI = new MongoClientURI(connectionString);
+    mongoClient = new com.mongodb.MongoClient(mongoClientURI);
+    fakeDb = mongoClient.getDB("mongobeetest");
+    fakeMongoDatabase = mongoClient.getDatabase("mongobeetest");
 
     when(dao.connectMongoDb(any(MongoClientURI.class), anyString()))
         .thenReturn(fakeMongoDatabase);
@@ -60,6 +69,7 @@ public class MongobeeEnvTest {
     dao.setIndexDao(indexDao);
     dao.setChangelogCollectionName(CHANGELOG_COLLECTION_NAME);
 
+    runner.setMongoClientURI(mongoClientURI);
     runner.setDbName("mongobeetest");
     runner.setEnabled(true);
   }  // TODO code duplication
@@ -76,7 +86,7 @@ public class MongobeeEnvTest {
 
     // then
     long change1 = fakeMongoDatabase.getCollection(CHANGELOG_COLLECTION_NAME)
-        .count(new Document()
+        .countDocuments(new Document()
             .append(ChangeEntry.KEY_CHANGEID, "Envtest1")
             .append(ChangeEntry.KEY_AUTHOR, "testuser"));
     assertEquals(1, change1);
@@ -95,7 +105,7 @@ public class MongobeeEnvTest {
 
     // then
     long change1 = fakeMongoDatabase.getCollection(CHANGELOG_COLLECTION_NAME)
-        .count(new Document()
+        .countDocuments(new Document()
             .append(ChangeEntry.KEY_CHANGEID, "Envtest1")
             .append(ChangeEntry.KEY_AUTHOR, "testuser"));
     assertEquals(1, change1);
@@ -107,6 +117,9 @@ public class MongobeeEnvTest {
     runner.setMongoTemplate(null);
     runner.setJongo(null);
     fakeDb.dropDatabase();
+    if (mongoClient != null) {
+      mongoClient.close();
+    }
   }
 
 }
