@@ -46,7 +46,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-    <revision>DEV</revision>
+    <revision>1.0.1</revision>
   </properties>
 
   <dependencies>
@@ -90,6 +90,10 @@
         <exclusion>
           <groupId>org.mongodb</groupId>
           <artifactId>mongodb-driver-core</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.mongodb</groupId>
+          <artifactId>mongo-java-driver</artifactId>
         </exclusion>
         <exclusion>
           <groupId>org.mongodb</groupId>
@@ -250,6 +254,8 @@
             <configuration>
               <publishingServerId>central</publishingServerId>
               <tokenAuth>true</tokenAuth>
+              <autoPublish>true</autoPublish>
+              <waitUntil>published</waitUntil>
             </configuration>
           </plugin>
         </plugins>

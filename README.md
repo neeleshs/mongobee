@@ -1,14 +1,11 @@
 ![mongobee](https://raw.githubusercontent.com/mongobee/mongobee/master/misc/mongobee_min.png)
 
-[![Build Status](https://travis-ci.com/dalet-oss/mongobee.svg?branch=master)](https://travis-ci.com/dalet-oss/mongobee)  [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.github.dalet-oss/mongobee/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.github.dalet-oss/mongobee) [![Licence](https://img.shields.io/hexpm/l/plug.svg)](https://github.com/dalet-oss/mongobee/blob/master/LICENSE)
 ---
 
-# DEPRECATED
-
-Use MongoCK instead.  Legacy migration is pretty easy; see https://www.mongock.io/legacy-migration.
+#  UPDATED TO use Java 25 and latest versions of Spring and other libraries. Also removes use of Fongo for testing and uses TestContainers instead. Updated using Claude Code
 
 
-## Old documentation
+## Documentation
 
 **mongobee** is a Java tool which helps you to *manage changes* in your MongoDB and *synchronize* them with your application.
 The concept is very similar to other db migration tools such as [Liquibase](http://www.liquibase.org) or [Flyway](http://flywaydb.org) but *without using XML/JSON/YML files*.
@@ -25,15 +22,15 @@ The goal is to keep this tool simple and comfortable to use.
 With Maven
 ```xml
 <dependency>
-  <groupId>com.github.dalet-oss</groupId>
+  <groupId>iom.github.neeleshs</groupId>
   <artifactId>mongobee</artifactId>
-  <version>1.0.4</version>
+  <version>1.0.1</version>
 </dependency>
 ```
 With Gradle
 ```groovy
 compile 'org.javassist:javassist:3.18.2-GA' // workaround for ${javassist.version} placeholder issue*
-compile 'com.github.dalet-oss:mongobee:1.0.4'
+compile 'io.github.neeleshs:mongobee:1.0.1'
 ```
 
 ### Usage with Spring
