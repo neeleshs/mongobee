@@ -16,8 +16,9 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import com.github.mongobee.changeset.ChangeEntry;
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientURI;
+import com.mongodb.ConnectionString;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -43,8 +44,8 @@ public class ChangeEntryIndexDaoTest {
 
   @BeforeClass
   public static void setUp() {
-    String connectionString = mongoDBContainer.getReplicaSetUrl(DB_NAME);
-    testMongoClient = new MongoClient(new MongoClientURI(connectionString));
+    ConnectionString connectionString = new ConnectionString(mongoDBContainer.getReplicaSetUrl(DB_NAME));
+    testMongoClient = MongoClients.create(connectionString);
   }
 
   @AfterClass

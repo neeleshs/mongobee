@@ -1,8 +1,6 @@
 package com.github.mongobee.test.changelogs;
 
 import com.github.mongobee.changeset.ChangeLog;
-import com.mongodb.DB;
-import org.jongo.Jongo;
 import com.github.mongobee.changeset.ChangeSet;
 import com.mongodb.client.MongoDatabase;
 
@@ -23,18 +21,18 @@ public class AnotherMongobeeTestResource {
   }
 
   @ChangeSet(author = "testuser", id = "Btest3", order = "03")
-  public void testChangeSet3(DB db){
-    System.out.println("invoked B3 with db=" + db.toString());
+  public void testChangeSet3(MongoDatabase mongoDatabase){
+    System.out.println("invoked B3 with mongoDatabase=" + mongoDatabase.toString());
   }
 
   @ChangeSet(author = "testuser", id = "Btest4", order = "04")
-  public void testChangeSet4(Jongo jongo){
-    System.out.println("invoked B4 with jongo=" + jongo.toString());
+  public void testChangeSet4(MongoDatabase mongoDatabase){
+    System.out.println("invoked B4 with mongoDatabase=" + mongoDatabase.toString());
   }
 
   @ChangeSet(author = "testuser", id = "Btest5", order = "05", runAlways = true)
-  public void testChangeSetWithAlways(Jongo jongo){
-    System.out.println("invoked B5 with always + jongo=" + jongo.getDatabase());
+  public void testChangeSetWithAlways(MongoDatabase mongoDatabase){
+    System.out.println("invoked B5 with always + mongoDatabase=" + mongoDatabase.toString());
   }
 
   @ChangeSet(author = "testuser", id = "Btest6", order = "06")

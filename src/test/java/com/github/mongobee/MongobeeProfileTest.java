@@ -7,8 +7,9 @@ import com.github.mongobee.resources.EnvironmentMock;
 import com.github.mongobee.test.changelogs.AnotherMongobeeTestResource;
 import com.github.mongobee.test.profiles.def.UnProfiledChangeLog;
 import com.github.mongobee.test.profiles.dev.ProfiledDevChangeLog;
-import com.mongodb.DB;
-import com.mongodb.MongoClientURI;
+import com.mongodb.ConnectionString;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
 import org.junit.After;
@@ -51,22 +52,17 @@ public class MongobeeProfileTest {
   @Mock
   private ChangeEntryIndexDao indexDao;
 
-  private DB fakeDb;
-
   private MongoDatabase fakeMongoDatabase;
-  private com.mongodb.MongoClient mongoClient;
+  private MongoClient mongoClient;
 
   @Before
   public void init() throws Exception {
-    String connectionString = mongoDBContainer.getReplicaSetUrl("mongobeetest");
-    MongoClientURI mongoClientURI = new MongoClientURI(connectionString);
-    mongoClient = new com.mongodb.MongoClient(mongoClientURI);
-    fakeDb = mongoClient.getDB("mongobeetest");
+    ConnectionString connectionString = new ConnectionString(mongoDBContainer.getReplicaSetUrl("mongobeetest"));
+    mongoClient = MongoClients.create(connectionString);
     fakeMongoDatabase = mongoClient.getDatabase("mongobeetest");
 
-    when(dao.connectMongoDb(any(MongoClientURI.class), anyString()))
+    when(dao.connectMongoDb(any(ConnectionString.class), anyString()))
         .thenReturn(fakeMongoDatabase);
-    when(dao.getDb()).thenReturn(fakeDb);
     when(dao.getMongoDatabase()).thenReturn(fakeMongoDatabase);
     when(dao.acquireProcessLock()).thenReturn(true);
     doCallRealMethod().when(dao).save(any(ChangeEntry.class));
@@ -75,7 +71,7 @@ public class MongobeeProfileTest {
     dao.setIndexDao(indexDao);
     dao.setChangelogCollectionName(CHANGELOG_COLLECTION_NAME);
 
-    runner.setMongoClientURI(mongoClientURI);
+    runner.setConnectionString(connectionString);
     runner.setDbName("mongobeetest");
     runner.setEnabled(true);
   } // TODO code duplication
@@ -214,8 +210,7 @@ public class MongobeeProfileTest {
   @After
   public void cleanUp() {
     runner.setMongoTemplate(null);
-    runner.setJongo(null);
-    fakeDb.dropDatabase();
+    fakeMongoDatabase.drop();
     if (mongoClient != null) {
       mongoClient.close();
     }

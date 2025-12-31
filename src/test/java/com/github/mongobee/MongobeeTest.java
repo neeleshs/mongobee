@@ -6,11 +6,11 @@ import com.github.mongobee.dao.ChangeEntryIndexDao;
 import com.github.mongobee.exception.MongobeeConfigurationException;
 import com.github.mongobee.exception.MongobeeException;
 import com.github.mongobee.test.changelogs.MongobeeTestResource;
-import com.mongodb.DB;
-import com.mongodb.MongoClientURI;
+import com.mongodb.ConnectionString;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
-import org.jongo.Jongo;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -47,20 +47,16 @@ public class MongobeeTest {
   @Mock
   private ChangeEntryIndexDao indexDao;
 
-  private DB fakeDb;
   private MongoDatabase fakeMongoDatabase;
-  private com.mongodb.MongoClient mongoClient;
+  private MongoClient mongoClient;
 
   @Before
   public void init() throws MongobeeException, UnknownHostException {
-    String connectionString = mongoDBContainer.getReplicaSetUrl("mongobeetest");
-    MongoClientURI mongoClientURI = new MongoClientURI(connectionString);
-    mongoClient = new com.mongodb.MongoClient(mongoClientURI);
-    fakeDb = mongoClient.getDB("mongobeetest");
+    ConnectionString connectionString = new ConnectionString(mongoDBContainer.getReplicaSetUrl("mongobeetest"));
+    mongoClient = MongoClients.create(connectionString);
     fakeMongoDatabase = mongoClient.getDatabase("mongobeetest");
-    when(dao.connectMongoDb(any(MongoClientURI.class), anyString()))
+    when(dao.connectMongoDb(any(ConnectionString.class), anyString()))
         .thenReturn(fakeMongoDatabase);
-    when(dao.getDb()).thenReturn(fakeDb);
     when(dao.getMongoDatabase()).thenReturn(fakeMongoDatabase);
     doCallRealMethod().when(dao).save(any(ChangeEntry.class));
     doCallRealMethod().when(dao).setChangelogCollectionName(anyString());
@@ -68,7 +64,7 @@ public class MongobeeTest {
     dao.setIndexDao(indexDao);
     dao.setChangelogCollectionName(CHANGELOG_COLLECTION_NAME);
 
-    runner.setMongoClientURI(mongoClientURI);
+    runner.setConnectionString(connectionString);
     runner.setDbName("mongobeetest");
     runner.setEnabled(true);
     runner.setChangeLogsScanPackage(MongobeeTestResource.class.getPackage().getName());
@@ -76,7 +72,7 @@ public class MongobeeTest {
 
   @Test(expected = MongobeeConfigurationException.class)
   public void shouldThrowAnExceptionIfNoDbNameSet() throws Exception {
-    Mongobee runner = new Mongobee(new MongoClientURI("mongodb://localhost:27017/"));
+    Mongobee runner = new Mongobee(new ConnectionString("mongodb://localhost:27017/"));
     runner.setEnabled(true);
     runner.setChangeLogsScanPackage(MongobeeTestResource.class.getPackage().getName());
     runner.execute();
@@ -143,16 +139,6 @@ public class MongobeeTest {
     runner.setMongoTemplate(mt);
     runner.afterPropertiesSet();
     verify(mt).getCollectionNames();
-  }
-
-  @Test
-  public void shouldUsePreConfiguredJongo() throws Exception {
-    Jongo jongo = mock(Jongo.class);
-    when(dao.acquireProcessLock()).thenReturn(true);
-    when(jongo.getDatabase()).thenReturn(null);
-    runner.setJongo(jongo);
-    runner.afterPropertiesSet();
-    verify(jongo).getDatabase();
   }
 
   @Test
@@ -227,8 +213,7 @@ public class MongobeeTest {
   @After
   public void cleanUp() {
     runner.setMongoTemplate(null);
-    runner.setJongo(null);
-    fakeDb.dropDatabase();
+    fakeMongoDatabase.drop();
     if (mongoClient != null) {
       mongoClient.close();
     }

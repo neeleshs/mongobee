@@ -8,9 +8,9 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import com.mongodb.DB;
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientURI;
+import com.mongodb.ConnectionString;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 import org.testcontainers.containers.MongoDBContainer;
 
@@ -31,8 +31,8 @@ public class LockDaoTest {
 
   @BeforeClass
   public static void setUp() {
-    String connectionString = mongoDBContainer.getReplicaSetUrl(DB_NAME);
-    testMongoClient = new MongoClient(new MongoClientURI(connectionString));
+    ConnectionString connectionString = new ConnectionString(mongoDBContainer.getReplicaSetUrl(DB_NAME));
+    testMongoClient = MongoClients.create(connectionString);
   }
 
   @AfterClass

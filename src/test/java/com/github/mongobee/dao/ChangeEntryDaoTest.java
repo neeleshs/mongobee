@@ -18,8 +18,9 @@ import org.junit.Test;
 import com.github.mongobee.exception.MongobeeConfigurationException;
 import com.github.mongobee.exception.MongobeeLockException;
 
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientURI;
+import com.mongodb.ConnectionString;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 import org.testcontainers.containers.MongoDBContainer;
 
@@ -45,8 +46,8 @@ public class ChangeEntryDaoTest {
 
   @BeforeClass
   public static void setUp() {
-    String connectionString = mongoDBContainer.getReplicaSetUrl(DB_NAME);
-    testMongoClient = new MongoClient(new MongoClientURI(connectionString));
+    ConnectionString connectionString = new ConnectionString(mongoDBContainer.getReplicaSetUrl(DB_NAME));
+    testMongoClient = MongoClients.create(connectionString);
   }
 
   @AfterClass
